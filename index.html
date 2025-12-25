@@ -1,0 +1,1122 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Swan–Ganz Monitor (Simulador)</title>
+<style>
+  :root{
+    --bg:#07090c;
+    --panel:#0f1217;
+    --panel2:#0b0e13;
+    --tile:#121823;
+    --stroke:#253046;
+    --grid:#101826;
+    --text:#eaf0ff;
+    --muted:#9fb0cc;
+    --green:#2ee58b;
+    --yellow:#ffd13b;
+    --red:#ff4d4d;
+    --blue:#55b7ff;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:radial-gradient(1200px 700px at 20% 0%, #0c1220 0%, var(--bg) 55%, #05070a 100%);
+    color:var(--text);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    overflow-x:hidden;
+  }
+
+  .app{
+    height:100svh;
+    display:flex;
+    flex-direction:column;
+  }
+
+  /* Top bar */
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:12px 14px 10px;
+    border-bottom:1px solid rgba(255,255,255,.06);
+    background:linear-gradient(180deg, rgba(10,13,18,.85), rgba(10,13,18,.45));
+    backdrop-filter: blur(10px);
+  }
+  .title{
+    display:flex; gap:10px; align-items:center;
+    font-weight:650;
+    letter-spacing:.2px;
+  }
+  .badge{
+    font-size:12px;
+    padding:4px 8px;
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:999px;
+    color:var(--muted);
+    background:rgba(255,255,255,.03);
+  }
+  .top-right{
+    display:flex; gap:12px; align-items:center;
+    color:var(--muted);
+    font-size:13px;
+  }
+  .vital{
+    display:flex; gap:10px; align-items:center;
+    padding:6px 10px;
+    border-radius:12px;
+    background:rgba(255,255,255,.03);
+    border:1px solid rgba(255,255,255,.08);
+  }
+  .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 12px rgba(46,229,139,.45);
+  }
+
+  /* Main split */
+  .main{
+    flex:1;
+    display:grid;
+    grid-template-columns: 1fr 320px;
+    gap:12px;
+    padding:12px 12px 10px;
+    min-height:0;
+  }
+  @media (max-width: 980px){
+    .main{ grid-template-columns:1fr; }
+  }
+
+  /* Left: trends */
+  .trends{
+    min-height:0;
+    background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:18px;
+    padding:10px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .trendRow{
+    flex:1;
+    min-height:0;
+    border-radius:14px;
+    background:linear-gradient(180deg, rgba(10,14,20,.95), rgba(7,10,14,.92));
+    border:1px solid rgba(255,255,255,.06);
+    overflow:hidden;
+    position:relative;
+  }
+  .trendLabel{
+    position:absolute;
+    left:10px;
+    top:8px;
+    display:flex;
+    gap:8px;
+    align-items:baseline;
+    pointer-events:none;
+    z-index:2;
+    text-shadow: 0 1px 0 rgba(0,0,0,.6);
+  }
+  .trendLabel .name{
+    font-weight:700;
+    letter-spacing:.3px;
+    font-size:13px;
+  }
+  .trendLabel .unit{
+    font-size:11px;
+    color:var(--muted);
+  }
+  .trendValue{
+    position:absolute;
+    right:10px;
+    top:6px;
+    font-variant-numeric: tabular-nums;
+    font-size:12px;
+    color:var(--muted);
+    z-index:2;
+    pointer-events:none;
+  }
+  canvas.trend{
+    width:100%;
+    height:100%;
+    display:block;
+  }
+
+  /* Right: tiles */
+  .side{
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .tile{
+    background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:18px;
+    padding:12px;
+  }
+  .tile h3{
+    margin:0 0 8px;
+    font-size:12px;
+    color:var(--muted);
+    letter-spacing:.4px;
+    font-weight:700;
+    text-transform:uppercase;
+  }
+  .big{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .big .num{
+    font-size:44px;
+    line-height:1;
+    font-weight:800;
+    font-variant-numeric: tabular-nums;
+  }
+  .big .u{
+    color:var(--muted);
+    font-size:13px;
+    margin-bottom:6px;
+  }
+  .miniGrid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:8px;
+    margin-top:10px;
+  }
+  .mini{
+    border-radius:14px;
+    padding:10px;
+    background:rgba(0,0,0,.25);
+    border:1px solid rgba(255,255,255,.06);
+  }
+  .mini .k{
+    font-size:11px;
+    color:var(--muted);
+    letter-spacing:.3px;
+    text-transform:uppercase;
+    margin-bottom:6px;
+  }
+  .mini .v{
+    font-size:18px;
+    font-weight:750;
+    font-variant-numeric: tabular-nums;
+  }
+  .statusline{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    margin-top:10px;
+    color:var(--muted);
+    font-size:12px;
+  }
+  .pill{
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.10);
+    background:rgba(255,255,255,.03);
+    white-space:nowrap;
+  }
+
+  /* Bottom dials */
+  .dials{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap:10px;
+    margin-top:auto;
+  }
+  @media (max-width: 980px){
+    .dials{ grid-template-columns: repeat(2, 1fr); }
+  }
+  .dial{
+    background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:18px;
+    padding:10px;
+    position:relative;
+    overflow:hidden;
+  }
+  .dial canvas{ width:100%; height:120px; display:block; }
+  .dial .center{
+    position:absolute;
+    left:12px; right:12px; bottom:10px;
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:10px;
+  }
+  .dial .center .label{
+    font-size:12px;
+    color:var(--muted);
+    letter-spacing:.3px;
+    font-weight:700;
+  }
+  .dial .center .value{
+    font-size:28px;
+    font-weight:850;
+    font-variant-numeric: tabular-nums;
+  }
+  .dial .center .unit{
+    font-size:12px;
+    color:var(--muted);
+    margin-left:6px;
+    font-weight:650;
+  }
+
+  /* Footer controls */
+  .footer{
+    padding:10px 12px 14px;
+    border-top:1px solid rgba(255,255,255,.06);
+    background:linear-gradient(180deg, rgba(10,13,18,.25), rgba(10,13,18,.85));
+    backdrop-filter: blur(10px);
+  }
+  .controls{
+    display:grid;
+    grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr 1fr;
+    gap:10px;
+    align-items:end;
+  }
+  @media (max-width: 1100px){
+    .controls{ grid-template-columns: 1fr 1fr 1fr; }
+  }
+  @media (max-width: 640px){
+    .controls{ grid-template-columns: 1fr; }
+  }
+
+  .ctrl{
+    background:rgba(255,255,255,.03);
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:16px;
+    padding:10px;
+  }
+  .ctrl label{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:8px;
+    font-weight:700;
+    letter-spacing:.25px;
+    text-transform:uppercase;
+  }
+  .ctrl input[type="range"]{
+    width:100%;
+  }
+  .ctrl select, .ctrl button{
+    width:100%;
+    height:38px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,.10);
+    background:rgba(0,0,0,.35);
+    color:var(--text);
+    outline:none;
+    font-size:13px;
+  }
+  .rowBtns{
+    display:flex;
+    gap:10px;
+  }
+  .rowBtns button{
+    flex:1;
+    cursor:pointer;
+  }
+  .btnPrimary{
+    background:linear-gradient(180deg, rgba(85,183,255,.28), rgba(85,183,255,.10));
+    border-color: rgba(85,183,255,.35);
+  }
+  .btnGhost{
+    background:rgba(255,255,255,.04);
+  }
+  .advWrap{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px;
+    margin-top:8px;
+    color:var(--muted);
+    font-size:12px;
+  }
+  .adv{
+    display:none;
+  }
+  .adv.show{
+    display:block;
+    margin-top:10px;
+  }
+  .hint{
+    margin-top:8px;
+    color:rgba(159,176,204,.85);
+    font-size:12px;
+    line-height:1.25;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="title">
+      <span style="font-size:14px;">Swan–Ganz</span>
+      <span class="badge">Simulador</span>
+      <span id="catStatus" class="badge">Catheter: PA • Balloon OFF</span>
+    </div>
+    <div class="top-right">
+      <div class="vital"><span class="dot"></span><span>HR <b id="hrTop">74</b> bpm</span></div>
+      <div class="vital"><span style="opacity:.75">🫁</span><span>Modo: <b id="modeTop">Clínico</b></span></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- LEFT: trends -->
+    <div class="trends">
+      <div class="trendRow">
+        <div class="trendLabel"><span class="name">CO</span><span class="unit">L/min</span></div>
+        <div class="trendValue" id="tvCO">—</div>
+        <canvas id="cCO" class="trend"></canvas>
+      </div>
+      <div class="trendRow">
+        <div class="trendLabel"><span class="name">SvO₂</span><span class="unit">%</span></div>
+        <div class="trendValue" id="tvSvO2">—</div>
+        <canvas id="cSvO2" class="trend"></canvas>
+      </div>
+      <div class="trendRow">
+        <div class="trendLabel"><span class="name">PCWP</span><span class="unit">mmHg</span></div>
+        <div class="trendValue" id="tvPCWP">—</div>
+        <canvas id="cPCWP" class="trend"></canvas>
+      </div>
+      <div class="trendRow">
+        <div class="trendLabel"><span class="name">MPAP</span><span class="unit">mmHg</span></div>
+        <div class="trendValue" id="tvMPAP">—</div>
+        <canvas id="cMPAP" class="trend"></canvas>
+      </div>
+      <div class="trendRow">
+        <div class="trendLabel"><span class="name">SVR</span><span class="unit">dyn·s·cm⁻⁵</span></div>
+        <div class="trendValue" id="tvSVR">—</div>
+        <canvas id="cSVR" class="trend"></canvas>
+      </div>
+    </div>
+
+    <!-- RIGHT: numeric tiles + dials -->
+    <div class="side">
+      <div class="tile">
+        <h3>Flujo</h3>
+        <div class="big">
+          <div class="num" id="nCO">5.5</div>
+          <div class="u">L/min</div>
+        </div>
+        <div class="miniGrid">
+          <div class="mini">
+            <div class="k">CI</div>
+            <div class="v"><span id="nCI">3.0</span> <span style="color:var(--muted);font-size:12px;">L/min/m²</span></div>
+          </div>
+          <div class="mini">
+            <div class="k">SV</div>
+            <div class="v"><span id="nSV">75</span> <span style="color:var(--muted);font-size:12px;">mL/lat</span></div>
+          </div>
+        </div>
+        <div class="statusline">
+          <span class="pill">CVP <b id="nCVP">4</b> mmHg</span>
+          <span class="pill">PCWP <b id="nPCWP">10</b> mmHg</span>
+        </div>
+      </div>
+
+      <div class="tile">
+        <h3>Pulmón & Oxigenación</h3>
+        <div class="miniGrid">
+          <div class="mini">
+            <div class="k">PAP (S/D/M)</div>
+            <div class="v"><span id="nPAP">25/10/15</span> <span style="color:var(--muted);font-size:12px;">mmHg</span></div>
+          </div>
+          <div class="mini">
+            <div class="k">SvO₂</div>
+            <div class="v"><span id="nSvO2">70</span> <span style="color:var(--muted);font-size:12px;">%</span></div>
+          </div>
+          <div class="mini">
+            <div class="k">PVR</div>
+            <div class="v"><span id="nPVR">180</span> <span style="color:var(--muted);font-size:12px;">dyn·s·cm⁻⁵</span></div>
+          </div>
+          <div class="mini">
+            <div class="k">SVR</div>
+            <div class="v"><span id="nSVR">1000</span> <span style="color:var(--muted);font-size:12px;">dyn·s·cm⁻⁵</span></div>
+          </div>
+        </div>
+        <div class="statusline">
+          <span class="pill">BSA <b>1.8</b> m²</span>
+          <span class="pill">VO₂ <b id="nVO2">250</b> mL/min</span>
+        </div>
+      </div>
+
+      <div class="dials">
+        <div class="dial">
+          <canvas id="dSV"></canvas>
+          <div class="center">
+            <div><div class="label">SV</div></div>
+            <div><span class="value" id="dSVv">75</span><span class="unit">mL</span></div>
+          </div>
+        </div>
+        <div class="dial">
+          <canvas id="dCI"></canvas>
+          <div class="center">
+            <div><div class="label">CI</div></div>
+            <div><span class="value" id="dCIv">3.0</span><span class="unit">L/min/m²</span></div>
+          </div>
+        </div>
+        <div class="dial">
+          <canvas id="dMPAP"></canvas>
+          <div class="center">
+            <div><div class="label">MPAP</div></div>
+            <div><span class="value" id="dMPAPv">15</span><span class="unit">mmHg</span></div>
+          </div>
+        </div>
+        <div class="dial">
+          <canvas id="dSVI"></canvas>
+          <div class="center">
+            <div><div class="label">SVI</div></div>
+            <div><span class="value" id="dSVIv">42</span><span class="unit">mL/m²</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER CONTROLS -->
+  <div class="footer">
+    <div class="controls">
+      <div class="ctrl">
+        <label><span>Escenario</span><span class="badge" id="scenarioTag">Normal</span></label>
+        <select id="scenario">
+          <option value="normal">Normal</option>
+          <option value="hypovolemia">Hipovolemia</option>
+          <option value="cardiogenic">Shock cardiogénico (VI)</option>
+          <option value="sepsisEarly">Sepsis temprana (hiperdinámico)</option>
+          <option value="pe">TEP / HTP (↑PVR)</option>
+          <option value="tamponade">Taponamiento</option>
+        </select>
+        <div class="hint">Los escenarios cargan valores iniciales y luego podés “jugar” con las perillas.</div>
+      </div>
+
+      <div class="ctrl">
+        <label><span>Preload</span><span id="vPreload">55</span></label>
+        <input id="preload" type="range" min="0" max="100" value="55" />
+      </div>
+
+      <div class="ctrl">
+        <label><span>Contractilidad</span><span id="vIno">55</span></label>
+        <input id="inotropy" type="range" min="0" max="100" value="55" />
+      </div>
+
+      <div class="ctrl">
+        <label><span>SVR (tono sistémico)</span><span id="vSVR">1000</span></label>
+        <input id="svr" type="range" min="400" max="2200" value="1000" step="10"/>
+      </div>
+
+      <div class="ctrl">
+        <label><span>PVR (tono pulmonar)</span><span id="vPVR">180</span></label>
+        <input id="pvr" type="range" min="80" max="900" value="180" step="10"/>
+      </div>
+
+      <div class="ctrl">
+        <label><span>HR</span><span id="vHR">74</span></label>
+        <input id="hr" type="range" min="40" max="150" value="74" step="1"/>
+        <div class="advWrap">
+          <span>Modo avanzado</span>
+          <label style="display:flex; gap:8px; align-items:center; margin:0;">
+            <input id="advToggle" type="checkbox" />
+            <span style="color:var(--muted); font-size:12px;">VO₂</span>
+          </label>
+        </div>
+        <div id="advPanel" class="adv">
+          <div style="height:10px"></div>
+          <label style="display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:700;letter-spacing:.25px;text-transform:uppercase;">
+            <span>VO₂</span><span id="vVO2">250</span>
+          </label>
+          <input id="vo2" type="range" min="150" max="450" value="250" step="5"/>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div class="controls" style="grid-template-columns: 1fr 1fr 1fr;">
+      <div class="ctrl">
+        <label><span>Catéter</span><span class="badge" id="posTag">PA</span></label>
+        <select id="catPos">
+          <option value="RA">RA (CVP)</option>
+          <option value="RV">RV</option>
+          <option value="PA" selected>PA</option>
+          <option value="WEDGE">WEDGE (PCWP)</option>
+        </select>
+      </div>
+      <div class="ctrl">
+        <label><span>Balón</span><span class="badge" id="balloonTag">OFF</span></label>
+        <div class="rowBtns">
+          <button id="balloonBtn" class="btnPrimary">Inflar/Desinflar</button>
+          <button id="resetBtn" class="btnGhost">Reset</button>
+        </div>
+        <div class="hint">Si el balón está ON, la lectura de presión pasa a PCWP.</div>
+      </div>
+      <div class="ctrl">
+        <label><span>Termodilución</span><span class="badge" id="tdTag">LISTO</span></label>
+        <button id="tdBtn" class="btnPrimary">Medir CO (x3)</button>
+        <div class="hint">Simula 3 mediciones con variación y promedia.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- Helpers ----------
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const lerp  = (a,b,t) => a + (b-a)*t;
+  const fmt1 = (x) => (Math.round(x*10)/10).toFixed(1);
+  const fmt0 = (x) => String(Math.round(x));
+
+  // ---------- Ranges (bandas verdes) ----------
+  const ranges = {
+    CO:   {min: 4.0,  max: 8.0,  warnLo:3.0, warnHi:9.0, unit:"L/min"},
+    SvO2: {min: 65,   max: 75,   warnLo:55,  warnHi:85,  unit:"%"},
+    PCWP: {min: 6,    max: 12,   warnLo:5,   warnHi:18,  unit:"mmHg"},
+    MPAP: {min: 10,   max: 20,   warnLo:9,   warnHi:25,  unit:"mmHg"},
+    SVR:  {min: 800,  max: 1200, warnLo:600, warnHi:1600,unit:"dyn·s·cm⁻⁵"},
+    SV:   {min: 60,   max: 100,  warnLo:40,  warnHi:110, unit:"mL"},
+    CI:   {min: 2.5,  max: 4.0,  warnLo:2.0, warnHi:4.5, unit:"L/min/m²"},
+    SVI:  {min: 33,   max: 47,   warnLo:25,  warnHi:55,  unit:"mL/m²"}
+  };
+
+  // ---------- Scenario presets ----------
+  // knobs: preload(0-100), inotropy(0-100), svr(dyn), pvr(dyn), hr(bpm), vo2(mL/min)
+  const scenarios = {
+    normal:     {name:"Normal", preload:55, inotropy:55, svr:1000, pvr:180, hr:74, vo2:250, catPos:"PA", balloon:false},
+    hypovolemia:{name:"Hipovolemia", preload:20, inotropy:55, svr:1600, pvr:180, hr:110, vo2:280, catPos:"PA", balloon:false},
+    cardiogenic:{name:"Shock cardiogénico (VI)", preload:70, inotropy:25, svr:1700, pvr:220, hr:105, vo2:280, catPos:"PA", balloon:false},
+    sepsisEarly:{name:"Sepsis temprana (hiperdinámico)", preload:45, inotropy:75, svr:650, pvr:170, hr:115, vo2:320, catPos:"PA", balloon:false},
+    pe:         {name:"TEP / HTP (↑PVR)", preload:55, inotropy:45, svr:1200, pvr:550, hr:110, vo2:300, catPos:"PA", balloon:false},
+    tamponade:  {name:"Taponamiento", preload:85, inotropy:35, svr:1700, pvr:240, hr:120, vo2:300, catPos:"PA", balloon:false},
+  };
+
+  // ---------- State ----------
+  const state = {
+    running: true,
+    bsa: 1.8,
+    preload: 55,
+    inotropy: 55,
+    svr: 1000,
+    pvr: 180,
+    hr: 74,
+    vo2: 250,
+    catPos: "PA",
+    balloon: false,
+    // "measured" CO via thermodilution
+    tdCO: null,
+    tdUntil: 0,
+  };
+
+  // ---------- UI refs ----------
+  const el = (id) => document.getElementById(id);
+
+  const ui = {
+    scenario: el("scenario"),
+    scenarioTag: el("scenarioTag"),
+    preload: el("preload"),
+    inotropy: el("inotropy"),
+    svr: el("svr"),
+    pvr: el("pvr"),
+    hr: el("hr"),
+    vo2: el("vo2"),
+    advToggle: el("advToggle"),
+    advPanel: el("advPanel"),
+    catPos: el("catPos"),
+    balloonBtn: el("balloonBtn"),
+    balloonTag: el("balloonTag"),
+    resetBtn: el("resetBtn"),
+    tdBtn: el("tdBtn"),
+    tdTag: el("tdTag"),
+    posTag: el("posTag"),
+    catStatus: el("catStatus"),
+    modeTop: el("modeTop"),
+    hrTop: el("hrTop"),
+
+    vPreload: el("vPreload"),
+    vIno: el("vIno"),
+    vSVR: el("vSVR"),
+    vPVR: el("vPVR"),
+    vHR: el("vHR"),
+    vVO2: el("vVO2"),
+
+    nCO: el("nCO"),
+    nCI: el("nCI"),
+    nSV: el("nSV"),
+    nSVR: el("nSVR"),
+    nPVR: el("nPVR"),
+    nSvO2: el("nSvO2"),
+    nVO2: el("nVO2"),
+    nCVP: el("nCVP"),
+    nPCWP: el("nPCWP"),
+    nPAP: el("nPAP"),
+
+    tvCO: el("tvCO"),
+    tvSvO2: el("tvSvO2"),
+    tvPCWP: el("tvPCWP"),
+    tvMPAP: el("tvMPAP"),
+    tvSVR: el("tvSVR"),
+
+    dSVv: el("dSVv"),
+    dCIv: el("dCIv"),
+    dMPAPv: el("dMPAPv"),
+    dSVIv: el("dSVIv"),
+  };
+
+  // ---------- Trends buffers ----------
+  const N = 220; // points
+  const series = {
+    CO:   new Array(N).fill(5.5),
+    SvO2: new Array(N).fill(70),
+    PCWP: new Array(N).fill(10),
+    MPAP: new Array(N).fill(15),
+    SVR:  new Array(N).fill(1000)
+  };
+
+  function pushSeries(key, value){
+    const arr = series[key];
+    arr.push(value);
+    while(arr.length > N) arr.shift();
+  }
+
+  // ---------- Physiology model (simplificado) ----------
+  function computeHemodynamics(){
+    // Map preload knob to filling pressures
+    // preload 0..100 -> CVP approx 1..16, PCWP approx 4..26
+    const cvp = lerp(1, 16, state.preload/100);
+    // PCWP responds stronger at higher preload; add mild nonlinearity
+    const pcwp = clamp( lerp(4, 26, Math.pow(state.preload/100, 1.15)) + (state.balloon ? 0 : 0), 2, 30);
+
+    // Contractility effect (0..100 -> 0.5..1.35)
+    const ino = lerp(0.55, 1.35, state.inotropy/100);
+
+    // Afterload penalty from SVR (center 1000)
+    const afterloadPenalty = clamp((state.svr - 1000) / 25, -20, 55);
+
+    // Preload contributes to SV with diminishing returns
+    const preloadFactor = 0.35 + 0.85 * Math.pow(state.preload/100, 0.85);
+
+    // HR effect: too high HR reduces filling/SV
+    const hr = state.hr;
+    const tachyPenalty = hr > 120 ? (hr - 120) * 0.35 : 0;
+
+    // SV baseline (mL/beat)
+    let sv = 35 + 75 * preloadFactor * ino - afterloadPenalty - tachyPenalty;
+    sv = clamp(sv, 20, 130);
+
+    // CO (L/min)
+    let co = (hr * sv) / 1000;
+
+    // A bit of physiologic "drag": extremely high afterload reduces CO further
+    if (state.svr > 1700) co *= 0.92;
+
+    // CI
+    const ci = co / state.bsa;
+
+    // Pulmonary: PVR affects MPAP; PCWP contributes to post-capillary component
+    const pvr = state.pvr;
+    let mpap = 15
+      + (pvr - 180) / 35
+      + (pcwp - 10) * 0.28;
+
+    mpap = clamp(mpap, 6, 55);
+
+    // PAP syst/diast from MPAP + pulse component
+    const pulse = clamp(10 + (pvr/120), 10, 26);
+    const papSys = clamp(mpap + pulse/2, 10, 80);
+    const papDia = clamp(mpap - pulse/2, 2, 45);
+
+    // Derived SVR and PVR using classic formulas (for display consistency)
+    // Estimate MAP from SVR: MAP ≈ (SVR*CO/80) + CVP
+    const map = (state.svr * co / 80) + cvp;
+    const svrCalc = clamp(((map - cvp) / Math.max(co, 0.1)) * 80, 300, 3000);
+    const pvrCalc = clamp(((mpap - pcwp) / Math.max(co, 0.1)) * 80, 40, 1600);
+
+    // SvO2 model: depends on CO and VO2 demand
+    // Baseline: CO 5.5 & VO2 250 -> ~70%
+    const vo2 = state.vo2;
+    let svo2 = 70 + (co - 5.5) * 4.0 - (vo2 - 250) / 18;
+
+    // Scenario-specific touch: sepsis early can have higher SvO2 (impaired extraction)
+    if (ui.scenario.value === "sepsisEarly") svo2 += 5;
+
+    svo2 = clamp(svo2, 35, 90);
+
+    // If catheter not in WEDGE or balloon OFF, PCWP "visible" depends on context
+    // We'll still compute PCWP, but when not wedge we show PCWP as derived/estimated.
+    // For realism: if balloon ON, we force position WEDGE display.
+    let displayPos = state.catPos;
+    if (state.balloon) displayPos = "WEDGE";
+
+    // Wedge reading logic: if balloon ON -> reading corresponds to PCWP; else if in PA -> PAP.
+    // We'll keep numbers visible regardless (simulator teaching), but the status changes.
+    return {
+      cvp, pcwp,
+      sv, co, ci,
+      mpap, papSys, papDia,
+      map, svrCalc, pvrCalc,
+      svo2,
+      displayPos
+    };
+  }
+
+  // ---------- Coloring ----------
+  function colorFor(value, r){
+    if (value < r.warnLo || value > r.warnHi) return getComputedStyle(document.documentElement).getPropertyValue('--red').trim();
+    if (value < r.min || value > r.max) return getComputedStyle(document.documentElement).getPropertyValue('--yellow').trim();
+    return getComputedStyle(document.documentElement).getPropertyValue('--green').trim();
+  }
+
+  // ---------- Canvas sizing ----------
+  function fitCanvas(canvas){
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(2, Math.floor(rect.width * dpr));
+    const h = Math.max(2, Math.floor(rect.height * dpr));
+    if (canvas.width !== w || canvas.height !== h){
+      canvas.width = w; canvas.height = h;
+    }
+    return {w,h,dpr};
+  }
+
+  // ---------- Draw trend row ----------
+  function drawTrend(canvas, key, values, range){
+    const {w,h} = fitCanvas(canvas);
+    const ctx = canvas.getContext("2d");
+
+    // Background
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.fillRect(0,0,w,h);
+
+    // Grid
+    ctx.strokeStyle = "rgba(255,255,255,0.06)";
+    ctx.lineWidth = 1;
+    const gx = 7;
+    for(let i=1;i<gx;i++){
+      const x = (w/gx)*i;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke();
+    }
+    const gy = 4;
+    for(let j=1;j<gy;j++){
+      const y = (h/gy)*j;
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+    }
+
+    // Scale Y
+    // Give headroom around warn limits for nicer graph
+    const yMin = range.warnLo - (range.warnHi-range.warnLo)*0.15;
+    const yMax = range.warnHi + (range.warnHi-range.warnLo)*0.15;
+
+    const yMap = (v) => {
+      const t = (v - yMin) / (yMax - yMin);
+      return h - clamp(t, 0, 1) * h;
+    };
+
+    // Normal band (green zone)
+    const yA = yMap(range.max);
+    const yB = yMap(range.min);
+    ctx.fillStyle = "rgba(46,229,139,0.12)";
+    ctx.fillRect(0, Math.min(yA,yB), w, Math.abs(yB-yA));
+
+    // Line
+    const last = values[values.length-1];
+    ctx.strokeStyle = colorFor(last, range);
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    values.forEach((v,i)=>{
+      const x = (i/(values.length-1))*w;
+      const y = yMap(v);
+      if(i===0) ctx.moveTo(x,y);
+      else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    // Sweep marker (right edge)
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(w-2,0); ctx.lineTo(w-2,h);
+    ctx.stroke();
+
+    // Point marker at last
+    const xLast = w-2;
+    const yLast = yMap(last);
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.beginPath();
+    ctx.arc(xLast, yLast, 3.2, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // ---------- Dials ----------
+  function drawDial(canvas, value, r, label){
+    const {w,h} = fitCanvas(canvas);
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0,0,w,h);
+
+    const cx = w/2;
+    const cy = h*0.92;
+    const rad = Math.min(w*0.42, h*0.75);
+
+    const start = Math.PI;       // 180°
+    const end   = 0;             // 0°
+    const span  = start - end;
+
+    function angleFor(v){
+      // map warnLo..warnHi across dial
+      const t = (v - r.warnLo) / (r.warnHi - r.warnLo);
+      return start - clamp(t,0,1)*span;
+    }
+
+    // track
+    ctx.lineWidth = 14;
+    ctx.lineCap = "round";
+
+    // red (extremes): left segment (warnLo..min) and right (max..warnHi)
+    const aWarnLo = angleFor(r.warnLo);
+    const aMin    = angleFor(r.min);
+    const aMax    = angleFor(r.max);
+    const aWarnHi = angleFor(r.warnHi);
+
+    // Left red
+    ctx.strokeStyle = "rgba(255,77,77,0.35)";
+    ctx.beginPath(); ctx.arc(cx,cy,rad, aWarnLo, aMin, true); ctx.stroke();
+
+    // Yellow low
+    ctx.strokeStyle = "rgba(255,209,59,0.35)";
+    ctx.beginPath(); ctx.arc(cx,cy,rad, aMin, aMax, true); ctx.stroke();
+
+    // Green normal
+    ctx.strokeStyle = "rgba(46,229,139,0.38)";
+    ctx.beginPath(); ctx.arc(cx,cy,rad, angleFor(r.max), angleFor(r.min), true); ctx.stroke();
+
+    // Yellow high
+    ctx.strokeStyle = "rgba(255,209,59,0.35)";
+    ctx.beginPath(); ctx.arc(cx,cy,rad, aMax, aWarnHi, true); ctx.stroke();
+
+    // Needle
+    const a = angleFor(value);
+    const nx = cx + Math.cos(a)*rad*0.92;
+    const ny = cy + Math.sin(a)*rad*0.92;
+
+    ctx.strokeStyle = "rgba(255,255,255,0.85)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.lineTo(nx,ny);
+    ctx.stroke();
+
+    // center dot
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.beginPath(); ctx.arc(cx,cy,5.2,0,Math.PI*2); ctx.fill();
+  }
+
+  // ---------- Apply scenario ----------
+  function applyScenario(key){
+    const s = scenarios[key];
+    if(!s) return;
+
+    state.preload = s.preload;
+    state.inotropy = s.inotropy;
+    state.svr = s.svr;
+    state.pvr = s.pvr;
+    state.hr  = s.hr;
+    state.vo2 = s.vo2;
+    state.catPos = s.catPos;
+    state.balloon = s.balloon;
+
+    // UI
+    ui.scenarioTag.textContent = s.name.split("(")[0].trim();
+    ui.preload.value = state.preload;
+    ui.inotropy.value = state.inotropy;
+    ui.svr.value = state.svr;
+    ui.pvr.value = state.pvr;
+    ui.hr.value = state.hr;
+    ui.vo2.value = state.vo2;
+    ui.catPos.value = state.catPos;
+
+    updateControlLabels();
+    updateStatusBadges();
+  }
+
+  function updateControlLabels(){
+    ui.vPreload.textContent = state.preload;
+    ui.vIno.textContent = state.inotropy;
+    ui.vSVR.textContent = state.svr;
+    ui.vPVR.textContent = state.pvr;
+    ui.vHR.textContent  = state.hr;
+    ui.vVO2.textContent = state.vo2;
+  }
+
+  function updateStatusBadges(){
+    ui.balloonTag.textContent = state.balloon ? "ON" : "OFF";
+    ui.posTag.textContent = state.catPos;
+    ui.catStatus.textContent = `Catheter: ${state.balloon ? "WEDGE" : state.catPos} • Balloon ${state.balloon ? "ON" : "OFF"}`;
+    ui.modeTop.textContent = ui.advToggle.checked ? "Avanzado" : "Clínico";
+    ui.hrTop.textContent = state.hr;
+  }
+
+  // ---------- Update numeric tiles ----------
+  function render(){
+    const h = computeHemodynamics();
+
+    // If thermodilution in progress, show tdCO as CO display
+    let coDisplay = h.co;
+    const now = performance.now();
+    if (state.tdCO !== null && now < state.tdUntil) coDisplay = state.tdCO;
+
+    // Update series
+    pushSeries("CO",   coDisplay);
+    pushSeries("SvO2", h.svo2);
+    pushSeries("PCWP", h.pcwp);
+    pushSeries("MPAP", h.mpap);
+    pushSeries("SVR",  h.svrCalc);
+
+    // Update text values
+    ui.nCO.textContent = fmt1(coDisplay);
+    ui.nCI.textContent = fmt1(h.ci);
+    ui.nSV.textContent = fmt0(h.sv);
+    ui.nSVR.textContent= fmt0(h.svrCalc);
+    ui.nPVR.textContent= fmt0(h.pvrCalc);
+    ui.nSvO2.textContent= fmt0(h.svo2);
+    ui.nVO2.textContent = fmt0(state.vo2);
+
+    ui.nCVP.textContent = fmt0(h.cvp);
+    ui.nPCWP.textContent= fmt0(h.pcwp);
+    ui.nPAP.textContent = `${fmt0(h.papSys)}/${fmt0(h.papDia)}/${fmt0(h.mpap)}`;
+
+    // Trend labels (top-right small)
+    ui.tvCO.textContent   = `${fmt1(coDisplay)} ${ranges.CO.unit}`;
+    ui.tvSvO2.textContent = `${fmt0(h.svo2)} ${ranges.SvO2.unit}`;
+    ui.tvPCWP.textContent = `${fmt0(h.pcwp)} ${ranges.PCWP.unit}`;
+    ui.tvMPAP.textContent = `${fmt0(h.mpap)} ${ranges.MPAP.unit}`;
+    ui.tvSVR.textContent  = `${fmt0(h.svrCalc)} ${ranges.SVR.unit}`;
+
+    // Dials
+    ui.dSVv.textContent   = fmt0(h.sv);
+    ui.dCIv.textContent   = fmt1(h.ci);
+    ui.dMPAPv.textContent = fmt0(h.mpap);
+    const svi = h.sv / state.bsa;
+    ui.dSVIv.textContent  = fmt0(svi);
+
+    drawDial(el("dSV"),   h.sv,  ranges.SV,  "SV");
+    drawDial(el("dCI"),   h.ci,  ranges.CI,  "CI");
+    drawDial(el("dMPAP"), h.mpap,ranges.MPAP,"MPAP");
+    drawDial(el("dSVI"),  svi,   ranges.SVI, "SVI");
+
+    // Trends
+    drawTrend(el("cCO"),   "CO",   series.CO,   ranges.CO);
+    drawTrend(el("cSvO2"), "SvO2", series.SvO2, ranges.SvO2);
+    drawTrend(el("cPCWP"), "PCWP", series.PCWP, ranges.PCWP);
+    drawTrend(el("cMPAP"), "MPAP", series.MPAP, ranges.MPAP);
+    drawTrend(el("cSVR"),  "SVR",  series.SVR,  ranges.SVR);
+
+    // Top status
+    updateStatusBadges();
+  }
+
+  // ---------- Thermodilution simulation ----------
+  async function runThermodilution(){
+    ui.tdTag.textContent = "MIDIENDO…";
+    ui.tdBtn.disabled = true;
+
+    // Use current computed CO as baseline
+    const h = computeHemodynamics();
+    const base = h.co;
+
+    // 3 simulated measures with noise +/- 8%
+    const measures = [];
+    for(let i=0;i<3;i++){
+      const noise = (Math.random()*0.16 - 0.08);
+      const m = clamp(base * (1+noise), 1.5, 12.0);
+      measures.push(m);
+      // briefly show each measurement
+      state.tdCO = m;
+      state.tdUntil = performance.now() + 600;
+      await new Promise(r=>setTimeout(r, 650));
+    }
+    const avg = measures.reduce((a,b)=>a+b,0)/measures.length;
+    state.tdCO = avg;
+    state.tdUntil = performance.now() + 1600;
+
+    ui.tdTag.textContent = `CO=${fmt1(avg)}`;
+    setTimeout(()=> ui.tdTag.textContent = "LISTO", 1800);
+    ui.tdBtn.disabled = false;
+  }
+
+  // ---------- Wiring controls ----------
+  ui.scenario.addEventListener("change", () => {
+    applyScenario(ui.scenario.value);
+  });
+
+  ui.preload.addEventListener("input", (e) => { state.preload = +e.target.value; updateControlLabels(); });
+  ui.inotropy.addEventListener("input",(e) => { state.inotropy= +e.target.value; updateControlLabels(); });
+  ui.svr.addEventListener("input",    (e) => { state.svr     = +e.target.value; updateControlLabels(); });
+  ui.pvr.addEventListener("input",    (e) => { state.pvr     = +e.target.value; updateControlLabels(); });
+  ui.hr.addEventListener("input",     (e) => { state.hr      = +e.target.value; updateControlLabels(); });
+  ui.vo2.addEventListener("input",    (e) => { state.vo2     = +e.target.value; updateControlLabels(); });
+
+  ui.advToggle.addEventListener("change", () => {
+    ui.advPanel.classList.toggle("show", ui.advToggle.checked);
+    ui.modeTop.textContent = ui.advToggle.checked ? "Avanzado" : "Clínico";
+  });
+
+  ui.catPos.addEventListener("change", (e) => {
+    state.catPos = e.target.value;
+    updateStatusBadges();
+  });
+
+  ui.balloonBtn.addEventListener("click", () => {
+    state.balloon = !state.balloon;
+    // If balloon ON -> force WEDGE feel in status (still keeps catPos selector)
+    updateStatusBadges();
+  });
+
+  ui.resetBtn.addEventListener("click", () => {
+    applyScenario(ui.scenario.value);
+    // reset trends to current steady state
+    const h = computeHemodynamics();
+    for (const k of Object.keys(series)){
+      const v = (k==="CO") ? h.co :
+                (k==="SvO2") ? h.svo2 :
+                (k==="PCWP") ? h.pcwp :
+                (k==="MPAP") ? h.mpap :
+                (k==="SVR")  ? h.svrCalc : 0;
+      series[k] = new Array(N).fill(v);
+    }
+  });
+
+  ui.tdBtn.addEventListener("click", runThermodilution);
+
+  // ---------- Main loop ----------
+  let last = performance.now();
+  function loop(now){
+    const dt = now - last;
+    if (dt > 160){ // ~6 Hz update feels like “monitor”
+      render();
+      last = now;
+    }
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- Init ----------
+  applyScenario("normal");
+  ui.advPanel.classList.remove("show");
+  ui.advToggle.checked = false;
+  ui.modeTop.textContent = "Clínico";
+  requestAnimationFrame(loop);
+
+  // Resize redraw
+  window.addEventListener("resize", () => {
+    // force next render to refit canvases
+    last = 0;
+  });
+})();
+</script>
+</body>
+</html>
