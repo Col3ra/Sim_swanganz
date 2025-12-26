@@ -3,372 +3,1002 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Swan–Ganz – Simulador Clínico</title>
-
+<title>Swan–Ganz Monitor (Simulador)</title>
 <style>
-:root{
-  --bg:#07090c;
-  --panel:#0f1217;
-  --text:#eaf0ff;
-  --muted:#9fb0cc;
-  --green:#2ee58b;
-  --yellow:#ffd13b;
-  --red:#ff4d4d;
-  --blue:#55b7ff;
-  --gray:#8892a6;
-}
-*{box-sizing:border-box}
-html,body{height:100%}
-body{
-  margin:0;
-  background:radial-gradient(1200px 700px at 20% 0%, #0c1220 0%, var(--bg) 60%);
-  color:var(--text);
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
-  overflow:hidden;
-}
-.app{
-  height:100dvh;
-  display:flex;
-  flex-direction:column;
-  min-height:0;
-}
+  :root{
+    --bg:#07090c;
+    --panel:#0f1217;
+    --panel2:#0b0e13;
+    --tile:#121823;
+    --stroke:#253046;
+    --grid:#101826;
+    --text:#eaf0ff;
+    --muted:#9fb0cc;
+    --green:#2ee58b;
+    --yellow:#ffd13b;
+    --red:#ff4d4d;
+    --blue:#55b7ff;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:radial-gradient(1200px 700px at 20% 0%, #0c1220 0%, var(--bg) 55%, #05070a 100%);
+    color:var(--text);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    overflow:hidden; /* importante: evitamos scroll del body, el scroll es interno */
+  }
 
-/* ---------- TOP BAR ---------- */
-.topbar{
-  padding:10px 14px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  border-bottom:1px solid rgba(255,255,255,.08);
-}
-.badge{
-  font-size:12px;
-  padding:4px 8px;
-  border-radius:999px;
-  border:1px solid rgba(255,255,255,.15);
-  color:var(--muted);
-}
-.status-warn{
-  color:var(--red);
-  font-weight:600;
-}
+  .app{
+    height:100dvh;          /* mejor en iOS que 100vh */
+    display:flex;
+    flex-direction:column;
+    min-height:0;           /* clave para que los hijos puedan hacer overflow correctamente */
+  }
 
-/* ---------- MAIN ---------- */
-.main{
-  flex:1;
-  min-height:0;
-  display:grid;
-  grid-template-columns:1fr 340px;
-  gap:12px;
-  padding:12px;
-}
+  /* Top bar */
+  .topbar{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:12px 14px 10px;
+    border-bottom:1px solid rgba(255,255,255,.06);
+    background:linear-gradient(180deg, rgba(10,13,18,.85), rgba(10,13,18,.45));
+    backdrop-filter: blur(10px);
+  }
+  .title{
+    display:flex; gap:10px; align-items:center;
+    font-weight:650;
+    letter-spacing:.2px;
+    min-width:0;
+  }
+  .badge{
+    font-size:12px;
+    padding:4px 8px;
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:999px;
+    color:var(--muted);
+    background:rgba(255,255,255,.03);
+    white-space:nowrap;
+  }
+  .top-right{
+    display:flex; gap:12px; align-items:center;
+    color:var(--muted);
+    font-size:13px;
+    flex:0 0 auto;
+  }
+  .vital{
+    display:flex; gap:10px; align-items:center;
+    padding:6px 10px;
+    border-radius:12px;
+    background:rgba(255,255,255,.03);
+    border:1px solid rgba(255,255,255,.08);
+    white-space:nowrap;
+  }
+  .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 12px rgba(46,229,139,.45);
+  }
 
-/* ---------- CURVA PRINCIPAL ---------- */
-.wave{
-  border:1px solid rgba(255,255,255,.08);
-  border-radius:18px;
-  position:relative;
-  overflow:hidden;
-}
-.wave-label{
-  position:absolute;
-  top:8px;
-  left:12px;
-  font-weight:700;
-}
-.wave-value{
-  position:absolute;
-  top:8px;
-  right:12px;
-  font-variant-numeric:tabular-nums;
-  color:var(--muted);
-}
-canvas{width:100%;height:100%}
+  /* Main split */
+  .main{
+    flex:1 1 auto;
+    min-height:0;                 /* CRÍTICO: permite scroll interno en columnas */
+    display:grid;
+    grid-template-columns: 1fr 340px;
+    gap:12px;
+    padding:12px 12px 10px;
+  }
+  @media (max-width: 980px){
+    .main{ grid-template-columns:1fr; }
+  }
 
-/* ---------- SIDE ---------- */
-.side{
-  overflow:auto;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-.tile{
-  border:1px solid rgba(255,255,255,.08);
-  border-radius:16px;
-  padding:10px;
-}
-.tile h3{
-  margin:0 0 6px;
-  font-size:12px;
-  color:var(--muted);
-  text-transform:uppercase;
-}
-.big{
-  font-size:clamp(32px,4vw,44px);
-  font-weight:800;
-}
-.mini{
-  font-size:13px;
-  margin-top:4px;
-  color:var(--muted);
-}
+  /* Left: trends */
+  .trends{
+    min-height:0;
+    background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:18px;
+    padding:10px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .trendRow{
+    flex:1 1 0;
+    min-height:0;
+    border-radius:14px;
+    background:linear-gradient(180deg, rgba(10,14,20,.95), rgba(7,10,14,.92));
+    border:1px solid rgba(255,255,255,.06);
+    overflow:hidden;
+    position:relative;
+  }
+  .trendLabel{
+    position:absolute;
+    left:10px;
+    top:8px;
+    display:flex;
+    gap:8px;
+    align-items:baseline;
+    pointer-events:none;
+    z-index:2;
+    text-shadow: 0 1px 0 rgba(0,0,0,.6);
+  }
+  .trendLabel .name{ font-weight:700; letter-spacing:.3px; font-size:13px; }
+  .trendLabel .unit{ font-size:11px; color:var(--muted); }
+  .trendValue{
+    position:absolute;
+    right:10px;
+    top:6px;
+    font-variant-numeric: tabular-nums;
+    font-size:12px;
+    color:var(--muted);
+    z-index:2;
+    pointer-events:none;
+  }
+  canvas.trend{ width:100%; height:100%; display:block; }
 
-/* ---------- FOOTER ---------- */
-.footer{
-  padding:10px;
-  border-top:1px solid rgba(255,255,255,.08);
-}
-.controls{
-  display:grid;
-  grid-template-columns:repeat(6,1fr);
-  gap:8px;
-}
-.ctrl{
-  border:1px solid rgba(255,255,255,.08);
-  border-radius:12px;
-  padding:8px;
-}
-.ctrl label{
-  font-size:11px;
-  color:var(--muted);
-}
-.ctrl input, .ctrl select, .ctrl button{
-  width:100%;
-}
-button{
-  background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.15);
-  color:var(--text);
-  border-radius:10px;
-  padding:6px;
-}
-button.primary{
-  background:rgba(85,183,255,.25);
-  border-color:rgba(85,183,255,.5);
-}
+  /* Right column: INTERNAL SCROLL (soluciona diales cortados en iPad) */
+  .side{
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+
+    overflow:auto;
+    -webkit-overflow-scrolling: touch;
+    padding-right:4px; /* para que no corte sombra al scrollear */
+  }
+  .tile{
+    background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:18px;
+    padding:12px;
+  }
+  .tile h3{
+    margin:0 0 8px;
+    font-size:12px;
+    color:var(--muted);
+    letter-spacing:.4px;
+    font-weight:700;
+    text-transform:uppercase;
+  }
+  .big{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+    min-width:0;
+  }
+  /* Evita superposiciones: el número grande ahora es responsivo */
+  .big .num{
+    font-size:clamp(34px, 4.2vw, 44px);
+    line-height:1;
+    font-weight:800;
+    font-variant-numeric: tabular-nums;
+  }
+  .big .u{ color:var(--muted); font-size:13px; margin-bottom:6px; }
+
+  .miniGrid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:8px;
+    margin-top:10px;
+  }
+  .mini{
+    border-radius:14px;
+    padding:10px;
+    background:rgba(0,0,0,.25);
+    border:1px solid rgba(255,255,255,.06);
+    min-width:0;
+  }
+  .mini .k{
+    font-size:11px;
+    color:var(--muted);
+    letter-spacing:.3px;
+    text-transform:uppercase;
+    margin-bottom:6px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .mini .v{
+    font-size:18px;
+    font-weight:750;
+    font-variant-numeric: tabular-nums;
+    white-space:nowrap;
+  }
+
+  .statusline{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    margin-top:10px;
+    color:var(--muted);
+    font-size:12px;
+    flex-wrap:wrap;
+  }
+  .pill{
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.10);
+    background:rgba(255,255,255,.03);
+    white-space:nowrap;
+  }
+
+  /* Dials: altura fija + canvas fijo => no se cortan */
+  .dials{
+    display:grid;
+    grid-template-columns: repeat(2, 1fr);  /* en columna derecha es mejor 2x2 */
+    gap:10px;
+  }
+  .dial{
+    background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:18px;
+    padding:10px;
+    position:relative;
+    overflow:hidden;
+
+    height:170px; /* fija para asegurar que el semicirculo completo entra */
+  }
+  .dial canvas{
+    width:100%;
+    height:120px; /* fija para el arco */
+    display:block;
+  }
+  .dial .center{
+    position:absolute;
+    left:12px; right:12px; bottom:10px;
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:10px;
+  }
+  .dial .center .label{ font-size:12px; color:var(--muted); letter-spacing:.3px; font-weight:700; }
+  .dial .center .value{ font-size:26px; font-weight:850; font-variant-numeric: tabular-nums; }
+  .dial .center .unit{ font-size:12px; color:var(--muted); margin-left:6px; font-weight:650; }
+
+  /* Footer controls */
+  .footer{
+    flex:0 0 auto;
+    padding:10px 12px calc(14px + env(safe-area-inset-bottom));
+    border-top:1px solid rgba(255,255,255,.06);
+    background:linear-gradient(180deg, rgba(10,13,18,.25), rgba(10,13,18,.85));
+    backdrop-filter: blur(10px);
+  }
+  .controls{
+    display:grid;
+    grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr 1fr;
+    gap:10px;
+    align-items:end;
+  }
+  @media (max-width: 1100px){
+    .controls{ grid-template-columns: 1fr 1fr 1fr; }
+  }
+  @media (max-width: 640px){
+    .controls{ grid-template-columns: 1fr; }
+  }
+
+  .ctrl{
+    background:rgba(255,255,255,.03);
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:16px;
+    padding:10px;
+  }
+  .ctrl label{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:8px;
+    font-weight:700;
+    letter-spacing:.25px;
+    text-transform:uppercase;
+  }
+  .ctrl input[type="range"]{ width:100%; }
+  .ctrl select, .ctrl button{
+    width:100%;
+    height:38px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,.10);
+    background:rgba(0,0,0,.35);
+    color:var(--text);
+    outline:none;
+    font-size:13px;
+  }
+  .rowBtns{ display:flex; gap:10px; }
+  .rowBtns button{ flex:1; cursor:pointer; }
+  .btnPrimary{
+    background:linear-gradient(180deg, rgba(85,183,255,.28), rgba(85,183,255,.10));
+    border-color: rgba(85,183,255,.35);
+  }
+  .btnGhost{ background:rgba(255,255,255,.04); }
+
+  .advWrap{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px;
+    margin-top:8px;
+    color:var(--muted);
+    font-size:12px;
+  }
+  .adv{ display:none; }
+  .adv.show{ display:block; margin-top:10px; }
+  .hint{
+    margin-top:8px;
+    color:rgba(159,176,204,.85);
+    font-size:12px;
+    line-height:1.25;
+  }
+
+  /* iPad horizontal (aprox.) */
+  @media (min-width: 1024px) and (max-width: 1366px) and (orientation: landscape){
+    .main{ grid-template-columns: 1fr 360px; }
+    .trends{ padding:10px; gap:10px; }
+    .side{ gap:10px; }
+    .dial{ height:175px; }
+  }
 </style>
 </head>
 
 <body>
 <div class="app">
-
-<!-- TOP -->
-<div class="topbar">
-  <div>
-    <b>Swan–Ganz</b>
-    <span id="status" class="badge">PA · Balloon OFF</span>
-  </div>
-  <div>
-    HR <b id="hrTop">75</b> bpm
-  </div>
-</div>
-
-<!-- MAIN -->
-<div class="main">
-
-  <!-- CURVA -->
-  <div class="wave">
-    <div class="wave-label" id="waveLabel">PAP</div>
-    <div class="wave-value" id="waveValue">—</div>
-    <canvas id="waveCanvas"></canvas>
-  </div>
-
-  <!-- SIDE -->
-  <div class="side">
-    <div class="tile">
-      <h3>Flujo</h3>
-      <div class="big"><span id="co">5.5</span> L/min</div>
-      <div class="mini">CI <span id="ci">3.0</span></div>
-      <div class="mini">SvO₂ <span id="svo2">70</span>%</div>
+  <div class="topbar">
+    <div class="title">
+      <span style="font-size:14px;">Swan–Ganz</span>
+      <span class="badge">Simulador</span>
+      <span id="catStatus" class="badge">Catheter: PA • Balloon OFF</span>
     </div>
-
-    <div class="tile">
-      <h3>Presiones</h3>
-      <div class="mini">CVP <span id="cvp">4</span> mmHg</div>
-      <div class="mini">PCWP <span id="pcwp">10</span> mmHg</div>
-      <div class="mini">MPAP <span id="mpap">15</span> mmHg</div>
-    </div>
-
-    <div class="tile">
-      <h3>Resistencias</h3>
-      <div class="mini">SVR <span id="svr">1000</span></div>
-      <div class="mini">PVR <span id="pvr">180</span></div>
+    <div class="top-right">
+      <div class="vital"><span class="dot"></span><span>HR <b id="hrTop">74</b> bpm</span></div>
+      <div class="vital"><span style="opacity:.75">🫁</span><span>Modo: <b id="modeTop">Clínico</b></span></div>
     </div>
   </div>
-</div>
 
-<!-- FOOTER -->
-<div class="footer">
-  <div class="controls">
-    <div class="ctrl">
-      <label>Escenario</label>
-      <select id="scenario">
-        <option value="normal">Normal</option>
-        <option value="hypovolemia">Hipovolemia</option>
-        <option value="cardio">Shock cardiogénico</option>
-        <option value="sepsis">Sepsis temprana</option>
-        <option value="tep">TEP</option>
-        <option value="tamponade">Taponamiento</option>
-      </select>
+  <div class="main">
+    <!-- LEFT: trends -->
+    <div class="trends">
+      <div class="trendRow">
+        <div class="trendLabel"><span class="name">CO</span><span class="unit">L/min</span></div>
+        <div class="trendValue" id="tvCO">—</div>
+        <canvas id="cCO" class="trend"></canvas>
+      </div>
+      <div class="trendRow">
+        <div class="trendLabel"><span class="name">SvO₂</span><span class="unit">%</span></div>
+        <div class="trendValue" id="tvSvO2">—</div>
+        <canvas id="cSvO2" class="trend"></canvas>
+      </div>
+      <div class="trendRow">
+        <div class="trendLabel"><span class="name">PCWP</span><span class="unit">mmHg</span></div>
+        <div class="trendValue" id="tvPCWP">—</div>
+        <canvas id="cPCWP" class="trend"></canvas>
+      </div>
+      <div class="trendRow">
+        <div class="trendLabel"><span class="name">MPAP</span><span class="unit">mmHg</span></div>
+        <div class="trendValue" id="tvMPAP">—</div>
+        <canvas id="cMPAP" class="trend"></canvas>
+      </div>
+      <div class="trendRow">
+        <div class="trendLabel"><span class="name">SVR</span><span class="unit">dyn·s·cm⁻⁵</span></div>
+        <div class="trendValue" id="tvSVR">—</div>
+        <canvas id="cSVR" class="trend"></canvas>
+      </div>
     </div>
-    <div class="ctrl">
-      <label>Preload</label>
-      <input id="preload" type="range" min="0" max="100" value="55">
-    </div>
-    <div class="ctrl">
-      <label>Contractilidad</label>
-      <input id="ino" type="range" min="0" max="100" value="55">
-    </div>
-    <div class="ctrl">
-      <label>SVR</label>
-      <input id="svrCtrl" type="range" min="400" max="2200" value="1000">
-    </div>
-    <div class="ctrl">
-      <label>PVR</label>
-      <input id="pvrCtrl" type="range" min="80" max="900" value="180">
-    </div>
-    <div class="ctrl">
-      <label>HR</label>
-      <input id="hr" type="range" min="40" max="150" value="75">
-    </div>
-    <div class="ctrl">
-      <label>Catéter</label>
-      <select id="catPos">
-        <option value="RA">RA</option>
-        <option value="RV">RV</option>
-        <option value="PA" selected>PA</option>
-      </select>
-    </div>
-    <div class="ctrl">
-      <label>Balón</label>
-      <button id="balloon" class="primary">Inflar / Desinflar</button>
-    </div>
-    <div class="ctrl">
-      <label>Termodilución</label>
-      <button id="td">Medir CO</button>
+
+    <!-- RIGHT: numeric tiles + dials -->
+    <div class="side">
+      <div class="tile">
+        <h3>Flujo</h3>
+        <div class="big">
+          <div class="num" id="nCO">5.5</div>
+          <div class="u">L/min</div>
+        </div>
+        <div class="miniGrid">
+          <div class="mini">
+            <div class="k">CI</div>
+            <div class="v"><span id="nCI">3.0</span> <span style="color:var(--muted);font-size:12px;">L/min/m²</span></div>
+          </div>
+          <div class="mini">
+            <div class="k">SV</div>
+            <div class="v"><span id="nSV">75</span> <span style="color:var(--muted);font-size:12px;">mL/lat</span></div>
+          </div>
+        </div>
+        <div class="statusline">
+          <span class="pill">CVP <b id="nCVP">4</b> mmHg</span>
+          <span class="pill">PCWP <b id="nPCWP">10</b> mmHg</span>
+        </div>
+      </div>
+
+      <div class="tile">
+        <h3>Pulmón & Oxigenación</h3>
+        <div class="miniGrid">
+          <div class="mini">
+            <div class="k">PAP (S/D/M)</div>
+            <div class="v"><span id="nPAP">25/10/15</span> <span style="color:var(--muted);font-size:12px;">mmHg</span></div>
+          </div>
+          <div class="mini">
+            <div class="k">SvO₂</div>
+            <div class="v"><span id="nSvO2">70</span> <span style="color:var(--muted);font-size:12px;">%</span></div>
+          </div>
+          <div class="mini">
+            <div class="k">PVR</div>
+            <div class="v"><span id="nPVR">180</span> <span style="color:var(--muted);font-size:12px;">dyn·s·cm⁻⁵</span></div>
+          </div>
+          <div class="mini">
+            <div class="k">SVR</div>
+            <div class="v"><span id="nSVR">1000</span> <span style="color:var(--muted);font-size:12px;">dyn·s·cm⁻⁵</span></div>
+          </div>
+        </div>
+        <div class="statusline">
+          <span class="pill">BSA <b>1.8</b> m²</span>
+          <span class="pill">VO₂ <b id="nVO2">250</b> mL/min</span>
+        </div>
+      </div>
+
+      <div class="dials">
+        <div class="dial">
+          <canvas id="dSV"></canvas>
+          <div class="center">
+            <div><div class="label">SV</div></div>
+            <div><span class="value" id="dSVv">75</span><span class="unit">mL</span></div>
+          </div>
+        </div>
+        <div class="dial">
+          <canvas id="dCI"></canvas>
+          <div class="center">
+            <div><div class="label">CI</div></div>
+            <div><span class="value" id="dCIv">3.0</span><span class="unit">L/min/m²</span></div>
+          </div>
+        </div>
+        <div class="dial">
+          <canvas id="dMPAP"></canvas>
+          <div class="center">
+            <div><div class="label">MPAP</div></div>
+            <div><span class="value" id="dMPAPv">15</span><span class="unit">mmHg</span></div>
+          </div>
+        </div>
+        <div class="dial">
+          <canvas id="dSVI"></canvas>
+          <div class="center">
+            <div><div class="label">SVI</div></div>
+            <div><span class="value" id="dSVIv">42</span><span class="unit">mL/m²</span></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-</div>
 
+  <!-- FOOTER CONTROLS -->
+  <div class="footer">
+    <div class="controls">
+      <div class="ctrl">
+        <label><span>Escenario</span><span class="badge" id="scenarioTag">Normal</span></label>
+        <select id="scenario">
+          <option value="normal">Normal</option>
+          <option value="hypovolemia">Hipovolemia</option>
+          <option value="cardiogenic">Shock cardiogénico (VI)</option>
+          <option value="sepsisEarly">Sepsis temprana (hiperdinámico)</option>
+          <option value="pe">TEP / HTP (↑PVR)</option>
+          <option value="tamponade">Taponamiento</option>
+        </select>
+        <div class="hint">Los escenarios cargan valores iniciales y luego podés “jugar” con las perillas.</div>
+      </div>
+
+      <div class="ctrl">
+        <label><span>Preload</span><span id="vPreload">55</span></label>
+        <input id="preload" type="range" min="0" max="100" value="55" />
+      </div>
+
+      <div class="ctrl">
+        <label><span>Contractilidad</span><span id="vIno">55</span></label>
+        <input id="inotropy" type="range" min="0" max="100" value="55" />
+      </div>
+
+      <div class="ctrl">
+        <label><span>SVR (tono sistémico)</span><span id="vSVR">1000</span></label>
+        <input id="svr" type="range" min="400" max="2200" value="1000" step="10"/>
+      </div>
+
+      <div class="ctrl">
+        <label><span>PVR (tono pulmonar)</span><span id="vPVR">180</span></label>
+        <input id="pvr" type="range" min="80" max="900" value="180" step="10"/>
+      </div>
+
+      <div class="ctrl">
+        <label><span>HR</span><span id="vHR">74</span></label>
+        <input id="hr" type="range" min="40" max="150" value="74" step="1"/>
+        <div class="advWrap">
+          <span>Modo avanzado</span>
+          <label style="display:flex; gap:8px; align-items:center; margin:0; text-transform:none;">
+            <input id="advToggle" type="checkbox" />
+            <span style="color:var(--muted); font-size:12px;">VO₂</span>
+          </label>
+        </div>
+        <div id="advPanel" class="adv">
+          <div style="height:10px"></div>
+          <label style="display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:700;letter-spacing:.25px;text-transform:uppercase;">
+            <span>VO₂</span><span id="vVO2">250</span>
+          </label>
+          <input id="vo2" type="range" min="150" max="450" value="250" step="5"/>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div class="controls" style="grid-template-columns: 1fr 1fr 1fr;">
+      <div class="ctrl">
+        <label><span>Catéter</span><span class="badge" id="posTag">PA</span></label>
+        <select id="catPos">
+          <option value="RA">RA (CVP)</option>
+          <option value="RV">RV</option>
+          <option value="PA" selected>PA</option>
+          <option value="WEDGE">WEDGE (PCWP)</option>
+        </select>
+      </div>
+      <div class="ctrl">
+        <label><span>Balón</span><span class="badge" id="balloonTag">OFF</span></label>
+        <div class="rowBtns">
+          <button id="balloonBtn" class="btnPrimary">Inflar/Desinflar</button>
+          <button id="resetBtn" class="btnGhost">Reset</button>
+        </div>
+        <div class="hint">Si el balón está ON, la lectura de presión pasa a PCWP.</div>
+      </div>
+      <div class="ctrl">
+        <label><span>Termodilución</span><span class="badge" id="tdTag">LISTO</span></label>
+        <button id="tdBtn" class="btnPrimary">Medir CO (x3)</button>
+        <div class="hint">Simula 3 mediciones con variación y promedia.</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
-/* ================= MODELO ================= */
-const state={
-  preload:55, ino:55, svr:1000, pvr:180, hr:75,
-  balloon:false, catPos:"PA",
-  vo2:250,
-  tdCO:null, tdUntil:0
-};
+(() => {
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const lerp  = (a,b,t) => a + (b-a)*t;
+  const fmt1 = (x) => (Math.round(x*10)/10).toFixed(1);
+  const fmt0 = (x) => String(Math.round(x));
 
-function clamp(x,a,b){return Math.max(a,Math.min(b,x));}
+  const ranges = {
+    CO:   {min: 4.0,  max: 8.0,  warnLo:3.0, warnHi:9.0, unit:"L/min"},
+    SvO2: {min: 65,   max: 75,   warnLo:55,  warnHi:85,  unit:"%"},
+    PCWP: {min: 6,    max: 12,   warnLo:5,   warnHi:18,  unit:"mmHg"},
+    MPAP: {min: 10,   max: 20,   warnLo:9,   warnHi:25,  unit:"mmHg"},
+    SVR:  {min: 800,  max: 1200, warnLo:600, warnHi:1600,unit:"dyn·s·cm⁻⁵"},
+    SV:   {min: 60,   max: 100,  warnLo:40,  warnHi:110, unit:"mL"},
+    CI:   {min: 2.5,  max: 4.0,  warnLo:2.0, warnHi:4.5, unit:"L/min/m²"},
+    SVI:  {min: 33,   max: 47,   warnLo:25,  warnHi:55,  unit:"mL/m²"}
+  };
 
-/* ---- fisiología ---- */
-function hemo(){
-  const cvp=1+state.preload*0.15;
-  const pcwp=4+state.preload*0.22;
+  const scenarios = {
+    normal:     {name:"Normal", preload:55, inotropy:55, svr:1000, pvr:180, hr:74, vo2:250, catPos:"PA", balloon:false},
+    hypovolemia:{name:"Hipovolemia", preload:20, inotropy:55, svr:1600, pvr:180, hr:110, vo2:280, catPos:"PA", balloon:false},
+    cardiogenic:{name:"Shock cardiogénico (VI)", preload:70, inotropy:25, svr:1700, pvr:220, hr:105, vo2:280, catPos:"PA", balloon:false},
+    sepsisEarly:{name:"Sepsis temprana (hiperdinámico)", preload:45, inotropy:75, svr:650, pvr:170, hr:115, vo2:320, catPos:"PA", balloon:false},
+    pe:         {name:"TEP / HTP (↑PVR)", preload:55, inotropy:45, svr:1200, pvr:550, hr:110, vo2:300, catPos:"PA", balloon:false},
+    tamponade:  {name:"Taponamiento", preload:85, inotropy:35, svr:1700, pvr:240, hr:120, vo2:300, catPos:"PA", balloon:false},
+  };
 
-  let sv=(30+state.preload*0.7)*(0.6+state.ino/100);
-  sv-=Math.max(0,(state.svr-1000)/30);
-  sv=clamp(sv,20,120);
+  const state = {
+    bsa: 1.8,
+    preload: 55,
+    inotropy: 55,
+    svr: 1000,
+    pvr: 180,
+    hr: 74,
+    vo2: 250,
+    catPos: "PA",
+    balloon: false,
+    tdCO: null,
+    tdUntil: 0,
+  };
 
-  let co=sv*state.hr/1000;
-  if(pcwp>18) co*=1-(pcwp-18)*0.015;
+  const el = (id) => document.getElementById(id);
+  const ui = {
+    scenario: el("scenario"),
+    scenarioTag: el("scenarioTag"),
+    preload: el("preload"),
+    inotropy: el("inotropy"),
+    svr: el("svr"),
+    pvr: el("pvr"),
+    hr: el("hr"),
+    vo2: el("vo2"),
+    advToggle: el("advToggle"),
+    advPanel: el("advPanel"),
+    catPos: el("catPos"),
+    balloonBtn: el("balloonBtn"),
+    balloonTag: el("balloonTag"),
+    resetBtn: el("resetBtn"),
+    tdBtn: el("tdBtn"),
+    tdTag: el("tdTag"),
+    posTag: el("posTag"),
+    catStatus: el("catStatus"),
+    modeTop: el("modeTop"),
+    hrTop: el("hrTop"),
 
-  const ci=co/1.8;
+    vPreload: el("vPreload"),
+    vIno: el("vIno"),
+    vSVR: el("vSVR"),
+    vPVR: el("vPVR"),
+    vHR: el("vHR"),
+    vVO2: el("vVO2"),
 
-  let mpap=12+(state.pvr-180)/30+(pcwp-10)*0.45;
-  mpap=clamp(mpap,6,50);
+    nCO: el("nCO"),
+    nCI: el("nCI"),
+    nSV: el("nSV"),
+    nSVR: el("nSVR"),
+    nPVR: el("nPVR"),
+    nSvO2: el("nSvO2"),
+    nVO2: el("nVO2"),
+    nCVP: el("nCVP"),
+    nPCWP: el("nPCWP"),
+    nPAP: el("nPAP"),
 
-  let svo2=70+(co-5.5)*4-(state.vo2-250)/18;
-  if(pcwp>18) svo2-=(pcwp-18)*1.2;
-  svo2=clamp(svo2,35,85);
+    tvCO: el("tvCO"),
+    tvSvO2: el("tvSvO2"),
+    tvPCWP: el("tvPCWP"),
+    tvMPAP: el("tvMPAP"),
+    tvSVR: el("tvSVR"),
 
-  return{cvp,pcwp,sv,co,ci,mpap,svo2};
-}
+    dSVv: el("dSVv"),
+    dCIv: el("dCIv"),
+    dMPAPv: el("dMPAPv"),
+    dSVIv: el("dSVIv"),
+  };
 
-/* ---- qué mide el catéter ---- */
-function measured(){
-  if(state.balloon){
-    if(state.catPos==="PA") return "PCWP";
-    return "INVALID";
+  const N = 220;
+  const series = {
+    CO:   new Array(N).fill(5.5),
+    SvO2: new Array(N).fill(70),
+    PCWP: new Array(N).fill(10),
+    MPAP: new Array(N).fill(15),
+    SVR:  new Array(N).fill(1000)
+  };
+
+  function pushSeries(key, value){
+    const arr = series[key];
+    arr.push(value);
+    while(arr.length > N) arr.shift();
   }
-  return state.catPos==="RA"?"CVP":
-         state.catPos==="RV"?"RV":
-         "PAP";
-}
 
-/* ================= UI ================= */
-const $=id=>document.getElementById(id);
-const canvas=$("waveCanvas"),ctx=canvas.getContext("2d");
-function resize(){
-  canvas.width=canvas.clientWidth*devicePixelRatio;
-  canvas.height=canvas.clientHeight*devicePixelRatio;
-}
-window.onresize=resize; resize();
+  function computeHemodynamics(){
+    const cvp = lerp(1, 16, state.preload/100);
+    const pcwp = clamp( lerp(4, 26, Math.pow(state.preload/100, 1.15)), 2, 30);
 
-let buffer=new Array(300).fill(0);
+    const ino = lerp(0.55, 1.35, state.inotropy/100);
+    const afterloadPenalty = clamp((state.svr - 1000) / 25, -20, 55);
 
-function draw(value,label){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  buffer.push(value); buffer.shift();
+    const preloadFactor = 0.35 + 0.85 * Math.pow(state.preload/100, 0.85);
 
-  ctx.strokeStyle="#55b7ff";
-  ctx.lineWidth=2*devicePixelRatio;
-  ctx.beginPath();
-  buffer.forEach((v,i)=>{
-    const x=i/buffer.length*canvas.width;
-    const y=canvas.height-(v/40)*canvas.height;
-    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    const hr = state.hr;
+    const tachyPenalty = hr > 120 ? (hr - 120) * 0.35 : 0;
+
+    let sv = 35 + 75 * preloadFactor * ino - afterloadPenalty - tachyPenalty;
+    sv = clamp(sv, 20, 130);
+
+    let co = (hr * sv) / 1000;
+    if (state.svr > 1700) co *= 0.92;
+
+    const ci = co / state.bsa;
+
+    const pvr = state.pvr;
+    let mpap = 15 + (pvr - 180) / 35 + (pcwp - 10) * 0.28;
+    mpap = clamp(mpap, 6, 55);
+
+    const pulse = clamp(10 + (pvr/120), 10, 26);
+    const papSys = clamp(mpap + pulse/2, 10, 80);
+    const papDia = clamp(mpap - pulse/2, 2, 45);
+
+    const map = (state.svr * co / 80) + cvp;
+    const svrCalc = clamp(((map - cvp) / Math.max(co, 0.1)) * 80, 300, 3000);
+    const pvrCalc = clamp(((mpap - pcwp) / Math.max(co, 0.1)) * 80, 40, 1600);
+
+    const vo2 = state.vo2;
+    let svo2 = 70 + (co - 5.5) * 4.0 - (vo2 - 250) / 18;
+    if (ui.scenario.value === "sepsisEarly") svo2 += 5;
+    svo2 = clamp(svo2, 35, 90);
+
+    return { cvp, pcwp, sv, co, ci, mpap, papSys, papDia, map, svrCalc, pvrCalc, svo2 };
+  }
+
+  function colorFor(value, r){
+    const css = getComputedStyle(document.documentElement);
+    const red = css.getPropertyValue('--red').trim();
+    const yel = css.getPropertyValue('--yellow').trim();
+    const grn = css.getPropertyValue('--green').trim();
+    if (value < r.warnLo || value > r.warnHi) return red;
+    if (value < r.min || value > r.max) return yel;
+    return grn;
+  }
+
+  function fitCanvas(canvas){
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(2, Math.floor(rect.width * dpr));
+    const h = Math.max(2, Math.floor(rect.height * dpr));
+    if (canvas.width !== w || canvas.height !== h){
+      canvas.width = w; canvas.height = h;
+    }
+    return {w,h};
+  }
+
+  function drawTrend(canvas, values, range){
+    const {w,h} = fitCanvas(canvas);
+    const ctx = canvas.getContext("2d");
+
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.fillRect(0,0,w,h);
+
+    ctx.strokeStyle = "rgba(255,255,255,0.06)";
+    ctx.lineWidth = 1;
+    const gx = 7;
+    for(let i=1;i<gx;i++){
+      const x = (w/gx)*i;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke();
+    }
+    const gy = 4;
+    for(let j=1;j<gy;j++){
+      const y = (h/gy)*j;
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+    }
+
+    const yMin = range.warnLo - (range.warnHi-range.warnLo)*0.15;
+    const yMax = range.warnHi + (range.warnHi-range.warnLo)*0.15;
+
+    const yMap = (v) => {
+      const t = (v - yMin) / (yMax - yMin);
+      return h - clamp(t, 0, 1) * h;
+    };
+
+    const yA = yMap(range.max);
+    const yB = yMap(range.min);
+    ctx.fillStyle = "rgba(46,229,139,0.12)";
+    ctx.fillRect(0, Math.min(yA,yB), w, Math.abs(yB-yA));
+
+    const last = values[values.length-1];
+    ctx.strokeStyle = colorFor(last, range);
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    values.forEach((v,i)=>{
+      const x = (i/(values.length-1))*w;
+      const y = yMap(v);
+      if(i===0) ctx.moveTo(x,y);
+      else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(w-2,0); ctx.lineTo(w-2,h);
+    ctx.stroke();
+
+    const xLast = w-2;
+    const yLast = yMap(last);
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.beginPath();
+    ctx.arc(xLast, yLast, 3.2, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  function drawDial(canvas, value, r){
+    const {w,h} = fitCanvas(canvas);
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0,0,w,h);
+
+    const cx = w/2;
+    const cy = h*0.92;
+    const rad = Math.min(w*0.44, h*0.80);
+
+    const start = Math.PI;
+    const end   = 0;
+    const span  = start - end;
+
+    const angleFor = (v) => {
+      const t = (v - r.warnLo) / (r.warnHi - r.warnLo);
+      return start - clamp(t,0,1)*span;
+    };
+
+    ctx.lineWidth = 14;
+    ctx.lineCap = "round";
+
+    const aWarnLo = angleFor(r.warnLo);
+    const aMin    = angleFor(r.min);
+    const aMax    = angleFor(r.max);
+    const aWarnHi = angleFor(r.warnHi);
+
+    ctx.strokeStyle = "rgba(255,77,77,0.35)";
+    ctx.beginPath(); ctx.arc(cx,cy,rad, aWarnLo, aMin, true); ctx.stroke();
+
+    ctx.strokeStyle = "rgba(255,209,59,0.35)";
+    ctx.beginPath(); ctx.arc(cx,cy,rad, aMin, aMax, true); ctx.stroke();
+
+    ctx.strokeStyle = "rgba(46,229,139,0.38)";
+    ctx.beginPath(); ctx.arc(cx,cy,rad, angleFor(r.max), angleFor(r.min), true); ctx.stroke();
+
+    ctx.strokeStyle = "rgba(255,209,59,0.35)";
+    ctx.beginPath(); ctx.arc(cx,cy,rad, aMax, aWarnHi, true); ctx.stroke();
+
+    const a = angleFor(value);
+    const nx = cx + Math.cos(a)*rad*0.92;
+    const ny = cy + Math.sin(a)*rad*0.92;
+
+    ctx.strokeStyle = "rgba(255,255,255,0.85)";
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(nx,ny); ctx.stroke();
+
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.beginPath(); ctx.arc(cx,cy,5.2,0,Math.PI*2); ctx.fill();
+  }
+
+  function updateControlLabels(){
+    ui.vPreload.textContent = state.preload;
+    ui.vIno.textContent = state.inotropy;
+    ui.vSVR.textContent = state.svr;
+    ui.vPVR.textContent = state.pvr;
+    ui.vHR.textContent  = state.hr;
+    ui.vVO2.textContent = state.vo2;
+  }
+
+  function updateStatusBadges(){
+    ui.balloonTag.textContent = state.balloon ? "ON" : "OFF";
+    ui.posTag.textContent = state.catPos;
+    ui.catStatus.textContent = `Catheter: ${state.balloon ? "WEDGE" : state.catPos} • Balloon ${state.balloon ? "ON" : "OFF"}`;
+    ui.modeTop.textContent = ui.advToggle.checked ? "Avanzado" : "Clínico";
+    ui.hrTop.textContent = state.hr;
+  }
+
+  function applyScenario(key){
+    const s = scenarios[key];
+    if(!s) return;
+
+    state.preload = s.preload;
+    state.inotropy = s.inotropy;
+    state.svr = s.svr;
+    state.pvr = s.pvr;
+    state.hr  = s.hr;
+    state.vo2 = s.vo2;
+    state.catPos = s.catPos;
+    state.balloon = s.balloon;
+
+    ui.scenarioTag.textContent = s.name.split("(")[0].trim();
+    ui.preload.value = state.preload;
+    ui.inotropy.value = state.inotropy;
+    ui.svr.value = state.svr;
+    ui.pvr.value = state.pvr;
+    ui.hr.value = state.hr;
+    ui.vo2.value = state.vo2;
+    ui.catPos.value = state.catPos;
+
+    updateControlLabels();
+    updateStatusBadges();
+  }
+
+  async function runThermodilution(){
+    ui.tdTag.textContent = "MIDIENDO…";
+    ui.tdBtn.disabled = true;
+
+    const h = computeHemodynamics();
+    const base = h.co;
+
+    const measures = [];
+    for(let i=0;i<3;i++){
+      const noise = (Math.random()*0.16 - 0.08);
+      const m = clamp(base * (1+noise), 1.5, 12.0);
+      measures.push(m);
+      state.tdCO = m;
+      state.tdUntil = performance.now() + 600;
+      await new Promise(r=>setTimeout(r, 650));
+    }
+    const avg = measures.reduce((a,b)=>a+b,0)/measures.length;
+    state.tdCO = avg;
+    state.tdUntil = performance.now() + 1600;
+
+    ui.tdTag.textContent = `CO=${fmt1(avg)}`;
+    setTimeout(()=> ui.tdTag.textContent = "LISTO", 1800);
+    ui.tdBtn.disabled = false;
+  }
+
+  function render(){
+    const h = computeHemodynamics();
+
+    let coDisplay = h.co;
+    const now = performance.now();
+    if (state.tdCO !== null && now < state.tdUntil) coDisplay = state.tdCO;
+
+    pushSeries("CO",   coDisplay);
+    pushSeries("SvO2", h.svo2);
+    pushSeries("PCWP", h.pcwp);
+    pushSeries("MPAP", h.mpap);
+    pushSeries("SVR",  h.svrCalc);
+
+    ui.nCO.textContent = fmt1(coDisplay);
+    ui.nCI.textContent = fmt1(h.ci);
+    ui.nSV.textContent = fmt0(h.sv);
+    ui.nSVR.textContent= fmt0(h.svrCalc);
+    ui.nPVR.textContent= fmt0(h.pvrCalc);
+    ui.nSvO2.textContent= fmt0(h.svo2);
+    ui.nVO2.textContent = fmt0(state.vo2);
+
+    ui.nCVP.textContent = fmt0(h.cvp);
+    ui.nPCWP.textContent= fmt0(h.pcwp);
+    ui.nPAP.textContent = `${fmt0(h.papSys)}/${fmt0(h.papDia)}/${fmt0(h.mpap)}`;
+
+    ui.tvCO.textContent   = `${fmt1(coDisplay)} ${ranges.CO.unit}`;
+    ui.tvSvO2.textContent = `${fmt0(h.svo2)} ${ranges.SvO2.unit}`;
+    ui.tvPCWP.textContent = `${fmt0(h.pcwp)} ${ranges.PCWP.unit}`;
+    ui.tvMPAP.textContent = `${fmt0(h.mpap)} ${ranges.MPAP.unit}`;
+    ui.tvSVR.textContent  = `${fmt0(h.svrCalc)} ${ranges.SVR.unit}`;
+
+    const svi = h.sv / state.bsa;
+    ui.dSVv.textContent   = fmt0(h.sv);
+    ui.dCIv.textContent   = fmt1(h.ci);
+    ui.dMPAPv.textContent = fmt0(h.mpap);
+    ui.dSVIv.textContent  = fmt0(svi);
+
+    drawDial(el("dSV"),   h.sv,  ranges.SV);
+    drawDial(el("dCI"),   h.ci,  ranges.CI);
+    drawDial(el("dMPAP"), h.mpap,ranges.MPAP);
+    drawDial(el("dSVI"),  svi,   ranges.SVI);
+
+    drawTrend(el("cCO"),   series.CO,   ranges.CO);
+    drawTrend(el("cSvO2"), series.SvO2, ranges.SvO2);
+    drawTrend(el("cPCWP"), series.PCWP, ranges.PCWP);
+    drawTrend(el("cMPAP"), series.MPAP, ranges.MPAP);
+    drawTrend(el("cSVR"),  series.SVR,  ranges.SVR);
+
+    updateStatusBadges();
+  }
+
+  ui.scenario.addEventListener("change", () => applyScenario(ui.scenario.value));
+  ui.preload.addEventListener("input", (e) => { state.preload = +e.target.value; updateControlLabels(); });
+  ui.inotropy.addEventListener("input",(e) => { state.inotropy= +e.target.value; updateControlLabels(); });
+  ui.svr.addEventListener("input",    (e) => { state.svr     = +e.target.value; updateControlLabels(); });
+  ui.pvr.addEventListener("input",    (e) => { state.pvr     = +e.target.value; updateControlLabels(); });
+  ui.hr.addEventListener("input",     (e) => { state.hr      = +e.target.value; updateControlLabels(); });
+  ui.vo2.addEventListener("input",    (e) => { state.vo2     = +e.target.value; updateControlLabels(); });
+
+  ui.advToggle.addEventListener("change", () => {
+    ui.advPanel.classList.toggle("show", ui.advToggle.checked);
+    ui.modeTop.textContent = ui.advToggle.checked ? "Avanzado" : "Clínico";
   });
-  ctx.stroke();
 
-  $("waveLabel").textContent=label;
-  $("waveValue").textContent=value!==null?value.toFixed(1):"—";
-}
+  ui.catPos.addEventListener("change", (e) => { state.catPos = e.target.value; updateStatusBadges(); });
+  ui.balloonBtn.addEventListener("click", () => { state.balloon = !state.balloon; updateStatusBadges(); });
 
-/* ================= LOOP ================= */
-function update(){
-  const h=hemo();
-  const wave=measured();
+  ui.resetBtn.addEventListener("click", () => {
+    applyScenario(ui.scenario.value);
+    const h = computeHemodynamics();
+    series.CO   = new Array(N).fill(h.co);
+    series.SvO2 = new Array(N).fill(h.svo2);
+    series.PCWP = new Array(N).fill(h.pcwp);
+    series.MPAP = new Array(N).fill(h.mpap);
+    series.SVR  = new Array(N).fill(h.svrCalc);
+  });
 
-  let v=null,label="INVALID";
+  ui.tdBtn.addEventListener("click", runThermodilution);
 
-  if(wave==="CVP"){v=h.cvp;label="CVP";}
-  if(wave==="PAP"){v=h.mpap;label="PAP (mean)";}
-  if(wave==="PCWP"){v=h.pcwp;label="PCWP";}
-  if(wave==="INVALID"){
-    $("status").textContent="⚠️ Balón fuera de PA";
-    $("status").classList.add("status-warn");
-  } else {
-    $("status").textContent=`${state.catPos}${state.balloon?" · WEDGE":""}`;
-    $("status").classList.remove("status-warn");
+  let last = performance.now();
+  function loop(now){
+    if (now - last > 160){
+      render();
+      last = now;
+    }
+    requestAnimationFrame(loop);
   }
 
-  draw(v,label);
+  applyScenario("normal");
+  ui.advPanel.classList.remove("show");
+  ui.advToggle.checked = false;
+  ui.modeTop.textContent = "Clínico";
+  requestAnimationFrame(loop);
 
-  $("co").textContent=h.co.toFixed(1);
-  $("ci").textContent=h.ci.toFixed(1);
-  $("svo2").textContent=h.svo2.toFixed(0);
-  $("cvp").textContent=h.cvp.toFixed(0);
-  $("pcwp").textContent=h.pcwp.toFixed(0);
-  $("mpap").textContent=h.mpap.toFixed(0);
-  $("svr").textContent=state.svr;
-  $("pvr").textContent=state.pvr;
-  $("hrTop").textContent=state.hr;
-
-  requestAnimationFrame(update);
-}
-update();
-
-/* ================= CONTROLS ================= */
-$("preload").oninput=e=>state.preload=+e.target.value;
-$("ino").oninput=e=>state.ino=+e.target.value;
-$("svrCtrl").oninput=e=>state.svr=+e.target.value;
-$("pvrCtrl").oninput=e=>state.pvr=+e.target.value;
-$("hr").oninput=e=>state.hr=+e.target.value;
-$("catPos").onchange=e=>state.catPos=e.target.value;
-$("balloon").onclick=()=>state.balloon=!state.balloon;
+  window.addEventListener("resize", () => { last = 0; });
+})();
 </script>
 </body>
 </html>
